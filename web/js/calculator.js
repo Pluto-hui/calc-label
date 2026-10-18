@@ -7,7 +7,8 @@ const Calc = {
     // ---- 数据 ----
     brands: [],              // 当前品牌库 [{name, wholesale, market?}]
     hiddenPresets: new Set(),
-    taggedPresets: new Set(), // 标签香烟（品牌索引集合）
+    tags: [],                // 标签名列表 ['高价位卷烟', '中华烟', ...]
+    brandTags: {},           // 品牌索引 → 标签名数组 { 0: ['中华烟','高价位卷烟'] }
     marketOverride: {},      // {index: value} 临时覆盖市场价
     wholesaleOverride: {},   // {index: value} 临时覆盖批发价
     qtyCache: {},            // {index: value}
@@ -16,19 +17,53 @@ const Calc = {
     // ---- 初始化 ----
     init() {
         this.brands = Storage.loadBrands();
-        this.taggedPresets = Storage.loadTags();
+        this.tags = Storage.loadTags();
+        this.brandTags = Storage.loadBrandTags();
         this.usageRecords = Storage.loadRecords();
         buildBrandIndex(this.brands);
     },
 
-    // ---- 切换标签状态 ----
-    toggleTag(idx) {
-        if (this.taggedPresets.has(idx)) {
-            this.taggedPresets.delete(idx);
+    // ---- 标签管理 ----
+    addTag(name) {
+        const n = (name || '').trim();
+        if (!n || this.tags.includes(n)) return false;
+        this.tags.push(n);
+        Storage.saveTags(this.tags);
+        return true;
+    },
+
+    deleteTag(name) {
+        this.tags = this.tags.filter(t => t !== name);
+        Storage.saveTags(this.tags);
+        // 从所有品牌移除该标签
+        Object.keys(this.brandTags).forEach(k => {
+            this.brandTags[k] = this.brandTags[k].filter(t => t !== name);
+            if (this.brandTags[k].length === 0) delete this.brandTags[k];
+        });
+        Storage.saveBrandTags(this.brandTags);
+    },
+
+    // ---- 品牌标签分配 ----
+    toggleBrandTag(brandIdx, tagName) {
+        const key = String(brandIdx);
+        if (!this.brandTags[key]) this.brandTags[key] = [];
+        const arr = this.brandTags[key];
+        const pos = arr.indexOf(tagName);
+        if (pos >= 0) {
+            arr.splice(pos, 1);
+            if (arr.length === 0) delete this.brandTags[key];
         } else {
-            this.taggedPresets.add(idx);
+            arr.push(tagName);
         }
-        Storage.saveTags(this.taggedPresets);
+        Storage.saveBrandTags(this.brandTags);
+    },
+
+    getBrandTags(brandIdx) {
+        return this.brandTags[String(brandIdx)] || [];
+    },
+
+    hasBrandTag(brandIdx, tagName) {
+        return this.getBrandTags(brandIdx).includes(tagName);
     },
 
     // ---- 获取品牌显示数据 ----
@@ -86,8 +121,13 @@ const Calc = {
         // 清理与新品牌库不匹配的缓存
         const valid = new Set(newBrands.map((_, i) => i));
         this.hiddenPresets = new Set([...this.hiddenPresets].filter(i => valid.has(i)));
-        this.taggedPresets = new Set([...this.taggedPresets].filter(i => valid.has(i)));
-        Storage.saveTags(this.taggedPresets);
+        // 清理品牌标签映射中的无效索引
+        const cleanedBrandTags = {};
+        Object.keys(this.brandTags).forEach(k => {
+            if (valid.has(parseInt(k))) cleanedBrandTags[k] = this.brandTags[k];
+        });
+        this.brandTags = cleanedBrandTags;
+        Storage.saveBrandTags(this.brandTags);
         [this.marketOverride, this.wholesaleOverride, this.qtyCache].forEach(cache => {
             Object.keys(cache).forEach(k => {
                 if (!valid.has(parseInt(k))) delete cache[k];

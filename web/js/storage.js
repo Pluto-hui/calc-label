@@ -104,30 +104,57 @@ const Storage = {
         }
     },
 
-    // ---- 标签香烟（标签组，存品牌索引） ----
+    // ---- 标签（多标签：标签名列表 + 品牌→标签映射） ----
     loadTags() {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             if (raw) {
                 const data = JSON.parse(raw);
                 if (data.tags && Array.isArray(data.tags)) {
-                    return new Set(data.tags);
+                    return data.tags;
                 }
             }
         } catch (e) { /* ignore */ }
-        return new Set();
+        return [];
+    },
+
+    loadBrandTags() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                if (data.brandTags && typeof data.brandTags === 'object') {
+                    return data.brandTags;
+                }
+            }
+        } catch (e) { /* ignore */ }
+        return {};
     },
 
     saveTags(tags) {
         try {
             const raw = localStorage.getItem(STORAGE_KEY);
             const data = raw ? JSON.parse(raw) : {};
-            data.tags = [...tags];
+            data.tags = tags;
             data.updatedAt = new Date().toISOString();
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             return true;
         } catch (e) {
             console.error('保存标签失败:', e);
+            return false;
+        }
+    },
+
+    saveBrandTags(brandTags) {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            const data = raw ? JSON.parse(raw) : {};
+            data.brandTags = brandTags;
+            data.updatedAt = new Date().toISOString();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            return true;
+        } catch (e) {
+            console.error('保存品牌标签映射失败:', e);
             return false;
         }
     },
