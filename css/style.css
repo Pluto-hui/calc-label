@@ -172,7 +172,9 @@ body {
 .brand-row.tagged { background: var(--accent-light); }
 .brand-row.tagged .brand-name { color: var(--accent); }
 
-/* ---- 标签选择弹窗 ---- */
+/* ---- 标签管理（品牌库页） ---- */
+.tag-manager .tm-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.tag-manager .tm-hint { font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; }
 .tm-add { display: flex; gap: 8px; margin-bottom: 12px; }
 .tm-add input {
     flex: 1; padding: 9px 12px; border: 1px solid var(--border);
@@ -185,6 +187,21 @@ body {
     background: var(--accent); color: #fff; font-size: 13px;
     font-weight: 600; cursor: pointer; white-space: nowrap; font-family: var(--font);
 }
+.tm-list { display: flex; flex-direction: column; gap: 8px; }
+.tm-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; background: var(--bg-input); border-radius: 10px;
+}
+.tm-name { font-size: 14px; color: var(--text); font-weight: 500; }
+.tm-count { font-size: 11px; color: var(--text-secondary); flex: 1; margin-left: 10px; }
+.tm-del {
+    border: none; background: var(--danger-bg); color: var(--danger);
+    padding: 5px 12px; border-radius: 8px; font-size: 12px;
+    cursor: pointer; font-family: var(--font);
+}
+.tm-del:active { opacity: 0.8; }
+
+/* ---- 标签选择弹窗 ---- */
 .tag-picker-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
 .tag-pick-item {
     display: flex; align-items: center; gap: 10px;

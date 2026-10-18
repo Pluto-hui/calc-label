@@ -75,6 +75,16 @@
                 <button class="btn-save" id="saveBrandsBtn">💾 保存</button>
             </div>
         </div>
+
+        <div class="brand-editor tag-manager">
+            <h3 class="tm-title">🏷️ 标签管理</h3>
+            <div class="tm-hint">新建/删除标签名，用于给品牌分类和筛选</div>
+            <div class="tm-add">
+                <input type="text" id="newTagName" placeholder="输入标签名，如：高价位卷烟" maxlength="12">
+                <button class="btn-save" id="addTagBtn">＋ 新建</button>
+            </div>
+            <div class="tm-list" id="tagList"></div>
+        </div>
     </div>
 
     <!-- ====== 页面 3：设置 ====== -->
@@ -101,7 +111,7 @@
             <div class="setting-row">
                 <div>
                     <div class="sr-label">版本</div>
-                    <div class="sr-desc">v2.8.0 — 2026.06</div>
+                    <div class="sr-desc">v2.9.0 — 2026.06</div>
                 </div>
             </div>
         </div>
