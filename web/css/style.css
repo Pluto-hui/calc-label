@@ -137,9 +137,22 @@ body {
 }
 .list-header .h-name { width: 78px; min-width: 78px; }
 .list-header .h-flex { flex: 1; min-width: 44px; text-align: center; }
+.list-header .h-tag { width: 34px; min-width: 34px; flex: 0 0 34px; text-align: center; }
 .list-header .h-qty { width: 38px; min-width: 32px; flex: 0 0 38px; text-align: center; }
 .list-header .h-diff { width: 68px; min-width: 68px; text-align: right; }
 .list-header .h-del { width: 20px; }
+
+/* ---- 标签香烟复选框 ---- */
+.tag-check {
+    width: 30px; min-width: 30px; flex: 0 0 30px; text-align: center;
+    font-size: 16px; cursor: pointer; user-select: none;
+    color: var(--text-muted); transition: transform 0.1s;
+    -webkit-tap-highlight-color: transparent;
+}
+.tag-check:active { transform: scale(1.3); }
+.tag-check.on { color: var(--accent); }
+.brand-row.tagged { background: var(--accent-light); }
+.brand-row.tagged .brand-name { color: var(--accent); }
 
 /* ---- 自定义添加行 ---- */
 .add-row { display: flex; gap: 5px; padding: 8px 10px; align-items: center; }
@@ -393,6 +406,8 @@ body {
     .diff-display { width: 54px; min-width: 54px; font-size: 12px; }
     .list-header .h-name { width: 64px; min-width: 64px; }
     .list-header .h-diff { width: 54px; min-width: 54px; }
+    .tag-check { width: 26px; min-width: 26px; flex: 0 0 26px; font-size: 14px; }
+    .list-header .h-tag { width: 26px; min-width: 26px; flex: 0 0 26px; }
 }
 
 /* ---- 骨架屏 ---- */

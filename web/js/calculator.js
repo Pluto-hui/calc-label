@@ -7,6 +7,7 @@ const Calc = {
     // ---- 数据 ----
     brands: [],              // 当前品牌库 [{name, wholesale, market?}]
     hiddenPresets: new Set(),
+    taggedPresets: new Set(), // 标签香烟（品牌索引集合）
     marketOverride: {},      // {index: value} 临时覆盖市场价
     wholesaleOverride: {},   // {index: value} 临时覆盖批发价
     qtyCache: {},            // {index: value}
@@ -15,8 +16,19 @@ const Calc = {
     // ---- 初始化 ----
     init() {
         this.brands = Storage.loadBrands();
+        this.taggedPresets = Storage.loadTags();
         this.usageRecords = Storage.loadRecords();
         buildBrandIndex(this.brands);
+    },
+
+    // ---- 切换标签状态 ----
+    toggleTag(idx) {
+        if (this.taggedPresets.has(idx)) {
+            this.taggedPresets.delete(idx);
+        } else {
+            this.taggedPresets.add(idx);
+        }
+        Storage.saveTags(this.taggedPresets);
     },
 
     // ---- 获取品牌显示数据 ----
@@ -74,6 +86,8 @@ const Calc = {
         // 清理与新品牌库不匹配的缓存
         const valid = new Set(newBrands.map((_, i) => i));
         this.hiddenPresets = new Set([...this.hiddenPresets].filter(i => valid.has(i)));
+        this.taggedPresets = new Set([...this.taggedPresets].filter(i => valid.has(i)));
+        Storage.saveTags(this.taggedPresets);
         [this.marketOverride, this.wholesaleOverride, this.qtyCache].forEach(cache => {
             Object.keys(cache).forEach(k => {
                 if (!valid.has(parseInt(k))) delete cache[k];

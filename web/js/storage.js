@@ -104,6 +104,34 @@ const Storage = {
         }
     },
 
+    // ---- 标签香烟（标签组，存品牌索引） ----
+    loadTags() {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                const data = JSON.parse(raw);
+                if (data.tags && Array.isArray(data.tags)) {
+                    return new Set(data.tags);
+                }
+            }
+        } catch (e) { /* ignore */ }
+        return new Set();
+    },
+
+    saveTags(tags) {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            const data = raw ? JSON.parse(raw) : {};
+            data.tags = [...tags];
+            data.updatedAt = new Date().toISOString();
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            return true;
+        } catch (e) {
+            console.error('保存标签失败:', e);
+            return false;
+        }
+    },
+
     // ---- 使用记录 ----
     loadRecords() {
         try {

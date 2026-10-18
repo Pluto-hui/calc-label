@@ -39,9 +39,16 @@ document.querySelectorAll('.tab-item').forEach(tab => {
 // ==================== 品牌列表渲染 ====================
 function renderBrandList() {
     const container = document.getElementById('brandList');
-    const visible = Calc.brands
+    let visible = Calc.brands
         .map((b, i) => ({ ...b, idx: i }))
         .filter(b => !Calc.hiddenPresets.has(b.idx));
+
+    // 标签香烟置顶排序：勾选的排前面，未勾选的排后面
+    visible.sort((a, b) => {
+        const ta = Calc.taggedPresets.has(a.idx) ? 1 : 0;
+        const tb = Calc.taggedPresets.has(b.idx) ? 1 : 0;
+        return tb - ta;
+    });
 
     if (visible.length === 0) {
         container.innerHTML = `
@@ -57,13 +64,15 @@ function renderBrandList() {
         const ws = Calc.getBrandWholesale(b.idx);
         const mkt = Calc.getBrandMarket(b.idx);
         const qty = Calc.getBrandQty(b.idx);
+        const tagged = Calc.taggedPresets.has(b.idx);
         return `
-        <div class="brand-row preset" data-index="${b.idx}">
+        <div class="brand-row preset ${tagged ? 'tagged' : ''}" data-index="${b.idx}">
             <span class="brand-name">${b.name}</span>
             <input type="number" class="w-price" value="${ws}" step="0.1" min="0"
                    data-index="${b.idx}" data-field="wholesale" placeholder="批发价">
             <input type="number" class="m-price" value="${mkt}" step="0.1" min="0"
                    data-index="${b.idx}" data-field="market" placeholder="市场价">
+            <span class="tag-check ${tagged ? 'on' : ''}" data-index="${b.idx}" title="标记为标签香烟">${tagged ? '🏷️' : '○'}</span>
             <input type="number" class="qty" value="${qty}" min="1" max="9999" step="1"
                    data-index="${b.idx}" data-field="qty">
             <span class="diff-display zero" data-index="${b.idx}">—</span>
@@ -117,8 +126,20 @@ function updateSummary() {
     document.getElementById('sumProfit').textContent = `¥${totalProfit.toFixed(2)}`;
 }
 
-// ==================== 删除/恢复 ====================
+// ==================== 删除/恢复 & 标签切换 ====================
 document.getElementById('brandList').addEventListener('click', function(e) {
+    // 标签切换
+    if (e.target.classList.contains('tag-check')) {
+        const idx = e.target.dataset.index;
+        if (idx !== undefined) {
+            Calc.toggleTag(parseInt(idx));
+            renderBrandList();
+            recalcAllDiffs();
+        }
+        return;
+    }
+
+    // 删除
     if (e.target.classList.contains('del-btn')) {
         const row = e.target.closest('.brand-row');
         const idx = e.target.dataset.index;
@@ -310,7 +331,7 @@ document.getElementById('saveAsImage').addEventListener('click', function() {
 document.getElementById('shareLink').addEventListener('click', function() {
     saveOverlay.classList.add('hidden');
 
-    const pageUrl = 'https://pluto-hui.github.io/calc';
+    const pageUrl = window.location.href.split('#')[0];
     const shareText = `💰 差价计算器\n${getPriceSummary()}\n\n📱 ${pageUrl}`;
 
     if (navigator.share) {
