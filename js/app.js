@@ -2,6 +2,9 @@
    app.js — 主入口 & UI 逻辑
    ============================================ */
 
+// 当前筛选的标签（空 = 显示全部）
+let currentFilterTag = '';
+
 // ---- 初始化 ----
 document.addEventListener('DOMContentLoaded', () => {
     // 主题
@@ -11,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 数据
     Calc.init();
+    renderTagFilter();
     renderBrandList();
     updateSummary();
 
@@ -32,6 +36,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         // 进入品牌库页时刷新内容
         if (page === 'brands') {
             document.getElementById('brandEditorText').value = brandsToText(Calc.brands);
+            renderTagManager();
         }
     });
 });
@@ -43,19 +48,17 @@ function renderBrandList() {
         .map((b, i) => ({ ...b, idx: i }))
         .filter(b => !Calc.hiddenPresets.has(b.idx));
 
-    // 标签香烟置顶排序：勾选的排前面，未勾选的排后面
-    visible.sort((a, b) => {
-        const ta = Calc.taggedPresets.has(a.idx) ? 1 : 0;
-        const tb = Calc.taggedPresets.has(b.idx) ? 1 : 0;
-        return tb - ta;
-    });
+    // 按当前筛选标签过滤
+    if (currentFilterTag) {
+        visible = visible.filter(b => Calc.hasBrandTag(b.idx, currentFilterTag));
+    }
 
     if (visible.length === 0) {
         container.innerHTML = `
             <div style="text-align:center;padding:40px 20px;color:var(--text-muted);">
                 <div style="font-size:40px;margin-bottom:10px;">📭</div>
-                <div style="font-size:14px;">品牌库为空</div>
-                <div style="font-size:12px;margin-top:4px;">切换到「品牌库」标签录入你的品牌</div>
+                <div style="font-size:14px;">${currentFilterTag ? '该标签下暂无品牌' : '品牌库为空'}</div>
+                <div style="font-size:12px;margin-top:4px;">${currentFilterTag ? '点击顶部「全部」查看所有品牌' : '切换到「品牌库」标签录入你的品牌'}</div>
             </div>`;
         return;
     }
@@ -64,15 +67,16 @@ function renderBrandList() {
         const ws = Calc.getBrandWholesale(b.idx);
         const mkt = Calc.getBrandMarket(b.idx);
         const qty = Calc.getBrandQty(b.idx);
-        const tagged = Calc.taggedPresets.has(b.idx);
+        const brandTagNames = Calc.getBrandTags(b.idx);
+        const hasTags = brandTagNames.length > 0;
         return `
-        <div class="brand-row preset ${tagged ? 'tagged' : ''}" data-index="${b.idx}">
+        <div class="brand-row preset ${hasTags ? 'tagged' : ''}" data-index="${b.idx}">
             <span class="brand-name">${b.name}</span>
             <input type="number" class="w-price" value="${ws}" step="0.1" min="0"
                    data-index="${b.idx}" data-field="wholesale" placeholder="批发价">
             <input type="number" class="m-price" value="${mkt}" step="0.1" min="0"
                    data-index="${b.idx}" data-field="market" placeholder="市场价">
-            <span class="tag-check ${tagged ? 'on' : ''}" data-index="${b.idx}" title="标记为标签香烟">${tagged ? '🏷️' : '○'}</span>
+            <span class="tag-check ${hasTags ? 'on' : ''}" data-index="${b.idx}" title="分配标签">${hasTags ? '🏷️' : '＋'}</span>
             <input type="number" class="qty" value="${qty}" min="1" max="9999" step="1"
                    data-index="${b.idx}" data-field="qty">
             <span class="diff-display zero" data-index="${b.idx}">—</span>
@@ -82,6 +86,26 @@ function renderBrandList() {
 
     updateRestoreBtn();
 }
+
+// ==================== 标签筛选栏渲染 ====================
+function renderTagFilter() {
+    const container = document.getElementById('tagFilter');
+    if (!container) return;
+    let html = `<button class="tag-chip ${currentFilterTag === '' ? 'active' : ''}" data-tag="">全部</button>`;
+    Calc.tags.forEach(t => {
+        html += `<button class="tag-chip ${currentFilterTag === t ? 'active' : ''}" data-tag="${t}">${t}</button>`;
+    });
+    container.innerHTML = html;
+}
+
+document.getElementById('tagFilter').addEventListener('click', function(e) {
+    const chip = e.target.closest('.tag-chip');
+    if (!chip) return;
+    currentFilterTag = chip.dataset.tag;
+    renderTagFilter();
+    renderBrandList();
+    recalcAllDiffs();
+});
 
 // ==================== 事件委托：输入变化 ====================
 document.getElementById('brandList').addEventListener('input', function(e) {
@@ -126,15 +150,13 @@ function updateSummary() {
     document.getElementById('sumProfit').textContent = `¥${totalProfit.toFixed(2)}`;
 }
 
-// ==================== 删除/恢复 & 标签切换 ====================
+// ==================== 删除/恢复 & 标签分配 ====================
 document.getElementById('brandList').addEventListener('click', function(e) {
-    // 标签切换
+    // 标签分配：打开弹窗
     if (e.target.classList.contains('tag-check')) {
         const idx = e.target.dataset.index;
         if (idx !== undefined) {
-            Calc.toggleTag(parseInt(idx));
-            renderBrandList();
-            recalcAllDiffs();
+            openTagPicker(parseInt(idx));
         }
         return;
     }
@@ -228,6 +250,117 @@ document.getElementById('resetBrandsBtn').addEventListener('click', function() {
         updateSummary();
         showToast('品牌库已清空');
     }
+});
+
+// ==================== 标签管理（品牌库页） ====================
+function renderTagManager() {
+    const container = document.getElementById('tagList');
+    if (!container) return;
+    if (Calc.tags.length === 0) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">暂无标签，输入名称新建</div>`;
+        return;
+    }
+    container.innerHTML = Calc.tags.map(t => {
+        const count = Object.keys(Calc.brandTags).filter(k => Calc.brandTags[k].includes(t)).length;
+        return `
+        <div class="tm-item">
+            <span class="tm-name">🏷️ ${t}</span>
+            <span class="tm-count">${count} 个品牌</span>
+            <button class="tm-del" data-tag="${t}" title="删除标签">删除</button>
+        </div>`;
+    }).join('');
+}
+
+document.getElementById('addTagBtn').addEventListener('click', function() {
+    const input = document.getElementById('newTagName');
+    const name = input.value.trim();
+    if (!name) { showToast('请输入标签名'); return; }
+    if (Calc.addTag(name)) {
+        input.value = '';
+        renderTagManager();
+        renderTagFilter();
+        showToast(`✅ 标签「${name}」已创建`);
+    } else {
+        showToast('⚠️ 标签已存在或无效');
+    }
+});
+
+document.getElementById('tagList').addEventListener('click', function(e) {
+    if (e.target.classList.contains('tm-del')) {
+        const tag = e.target.dataset.tag;
+        if (confirm(`确定删除标签「${tag}」吗？该标签将从所有品牌移除。`)) {
+            Calc.deleteTag(tag);
+            if (currentFilterTag === tag) currentFilterTag = '';
+            renderTagManager();
+            renderTagFilter();
+            renderBrandList();
+            showToast(`✅ 已删除标签「${tag}」`);
+        }
+    }
+});
+
+// ==================== 标签分配弹窗 ====================
+const tagOverlay = document.getElementById('tagOverlay');
+let currentPickBrand = null;
+
+function openTagPicker(brandIdx) {
+    currentPickBrand = brandIdx;
+    const brand = Calc.brands[brandIdx];
+    document.getElementById('tagOverlayTitle').textContent = `🏷️ 给「${brand.name}」分配标签`;
+    renderTagPickerList();
+    document.getElementById('pickerNewTag').value = '';
+    tagOverlay.classList.remove('hidden');
+}
+
+function renderTagPickerList() {
+    const container = document.getElementById('tagPickerList');
+    if (Calc.tags.length === 0) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">暂无标签，在下方新建</div>`;
+        return;
+    }
+    container.innerHTML = Calc.tags.map(t => {
+        const checked = Calc.hasBrandTag(currentPickBrand, t);
+        return `
+        <button class="tag-pick-item ${checked ? 'checked' : ''}" data-tag="${t}">
+            <span class="tp-check">${checked ? '☑' : '☐'}</span>
+            <span class="tp-name">${t}</span>
+        </button>`;
+    }).join('');
+}
+
+document.getElementById('tagPickerList').addEventListener('click', function(e) {
+    const item = e.target.closest('.tag-pick-item');
+    if (!item) return;
+    const tag = item.dataset.tag;
+    Calc.toggleBrandTag(currentPickBrand, tag);
+    renderTagPickerList();
+    renderTagManager();
+    renderBrandList();
+    renderTagFilter();
+});
+
+document.getElementById('pickerAddTagBtn').addEventListener('click', function() {
+    const input = document.getElementById('pickerNewTag');
+    const name = input.value.trim();
+    if (!name) { showToast('请输入标签名'); return; }
+    if (Calc.addTag(name)) {
+        Calc.toggleBrandTag(currentPickBrand, name); // 创建后立即分配给当前品牌
+        input.value = '';
+        renderTagPickerList();
+        renderTagManager();
+        renderBrandList();
+        renderTagFilter();
+        showToast(`✅ 已创建并分配「${name}」`);
+    } else {
+        showToast('⚠️ 标签已存在');
+    }
+});
+
+document.getElementById('cancelTagPick').addEventListener('click', function() {
+    tagOverlay.classList.add('hidden');
+});
+tagOverlay.addEventListener('click', function(e) {
+    if (e.target === tagOverlay) tagOverlay.classList.add('hidden');
 });
 
 // ==================== 设置页 ====================
@@ -477,10 +610,11 @@ document.addEventListener('keydown', function(e) {
         if (!importOverlay.classList.contains('hidden')) {
             importOverlay.classList.add('hidden');
         }
-        // 关闭二维码放大弹窗
-        const qrOverlay = document.getElementById('qrOverlay');
-        if (qrOverlay && !qrOverlay.classList.contains('hidden')) {
-            qrOverlay.classList.add('hidden');
+        if (tagOverlay && !tagOverlay.classList.contains('hidden')) {
+            tagOverlay.classList.add('hidden');
+        }
+        if (saveOverlay && !saveOverlay.classList.contains('hidden')) {
+            saveOverlay.classList.add('hidden');
         }
     }
 });

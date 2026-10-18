@@ -154,6 +154,67 @@ body {
 .brand-row.tagged { background: var(--accent-light); }
 .brand-row.tagged .brand-name { color: var(--accent); }
 
+/* ---- 标签筛选栏 ---- */
+.tag-filter {
+    display: flex; gap: 8px; padding: 4px 4px 10px; overflow-x: auto;
+    flex-wrap: nowrap; -webkit-overflow-scrolling: touch;
+}
+.tag-filter::-webkit-scrollbar { display: none; }
+.tag-chip {
+    flex-shrink: 0; padding: 6px 14px; border-radius: 16px;
+    font-size: 12px; font-weight: 500; cursor: pointer;
+    border: 1px solid var(--border); background: var(--bg-card);
+    color: var(--text-secondary); font-family: var(--font);
+    transition: all 0.15s; white-space: nowrap;
+}
+.tag-chip.active {
+    background: var(--accent); color: #fff; border-color: var(--accent);
+    font-weight: 600;
+}
+
+/* ---- 标签管理（品牌库页） ---- */
+.tag-manager .tm-title { font-size: 15px; font-weight: 600; margin-bottom: 4px; }
+.tag-manager .tm-hint { font-size: 11px; color: var(--text-secondary); margin-bottom: 12px; }
+.tm-add { display: flex; gap: 8px; margin-bottom: 12px; }
+.tm-add input {
+    flex: 1; padding: 9px 12px; border: 1px solid var(--border);
+    border-radius: 10px; font-size: 13px; outline: none;
+    background: var(--bg-input); color: var(--text); font-family: var(--font);
+}
+.tm-add input:focus { border-color: var(--accent); }
+.tm-add .btn-save {
+    padding: 9px 16px; border: none; border-radius: 10px;
+    background: var(--accent); color: #fff; font-size: 13px;
+    font-weight: 600; cursor: pointer; white-space: nowrap; font-family: var(--font);
+}
+.tm-list { display: flex; flex-direction: column; gap: 8px; }
+.tm-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 12px; background: var(--bg-input); border-radius: 10px;
+}
+.tm-name { font-size: 14px; color: var(--text); font-weight: 500; }
+.tm-count { font-size: 11px; color: var(--text-secondary); flex: 1; margin-left: 10px; }
+.tm-del {
+    border: none; background: var(--danger-bg); color: var(--danger);
+    padding: 5px 12px; border-radius: 8px; font-size: 12px;
+    cursor: pointer; font-family: var(--font);
+}
+.tm-del:active { opacity: 0.8; }
+
+/* ---- 标签分配弹窗 ---- */
+.tag-picker-list { display: flex; flex-direction: column; gap: 8px; max-height: 50vh; overflow-y: auto; }
+.tag-pick-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 12px 14px; border: 1px solid var(--border); border-radius: 10px;
+    background: var(--bg-input); cursor: pointer; font-family: var(--font);
+    text-align: left; transition: background 0.15s; width: 100%;
+}
+.tag-pick-item:active { background: var(--border); }
+.tag-pick-item.checked { border-color: var(--accent); background: var(--accent-light); }
+.tag-pick-item .tp-check { font-size: 16px; color: var(--text-muted); flex-shrink: 0; }
+.tag-pick-item.checked .tp-check { color: var(--accent); }
+.tag-pick-item .tp-name { font-size: 14px; color: var(--text); }
+
 /* ---- 自定义添加行 ---- */
 .add-row { display: flex; gap: 5px; padding: 8px 10px; align-items: center; }
 .add-row input {
