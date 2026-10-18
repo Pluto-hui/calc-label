@@ -36,6 +36,7 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         // 进入品牌库页时刷新内容
         if (page === 'brands') {
             document.getElementById('brandEditorText').value = brandsToText(Calc.brands);
+            renderTagManager();
         }
     });
 });
@@ -248,6 +249,53 @@ document.getElementById('resetBrandsBtn').addEventListener('click', function() {
         renderBrandList();
         updateSummary();
         showToast('品牌库已清空');
+    }
+});
+
+// ==================== 标签管理（品牌库页） ====================
+function renderTagManager() {
+    const container = document.getElementById('tagList');
+    if (!container) return;
+    if (Calc.tags.length === 0) {
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">暂无标签，输入名称新建</div>`;
+        return;
+    }
+    container.innerHTML = Calc.tags.map(t => {
+        const count = Object.keys(Calc.brandTags).filter(k => Calc.brandTags[k].includes(t)).length;
+        return `
+        <div class="tm-item">
+            <span class="tm-name">🏷️ ${t}</span>
+            <span class="tm-count">${count} 个品牌</span>
+            <button class="tm-del" data-tag="${t}" title="删除标签">删除</button>
+        </div>`;
+    }).join('');
+}
+
+document.getElementById('addTagBtn').addEventListener('click', function() {
+    const input = document.getElementById('newTagName');
+    const name = input.value.trim();
+    if (!name) { showToast('请输入标签名'); return; }
+    if (Calc.addTag(name)) {
+        input.value = '';
+        renderTagManager();
+        renderTagFilter();
+        showToast(`✅ 标签「${name}」已创建`);
+    } else {
+        showToast('⚠️ 标签已存在或无效');
+    }
+});
+
+document.getElementById('tagList').addEventListener('click', function(e) {
+    if (e.target.classList.contains('tm-del')) {
+        const tag = e.target.dataset.tag;
+        if (confirm(`确定删除标签「${tag}」吗？该标签将从所有品牌移除。`)) {
+            Calc.deleteTag(tag);
+            if (currentFilterTag === tag) currentFilterTag = '';
+            renderTagManager();
+            renderTagFilter();
+            renderBrandList();
+            showToast(`✅ 已删除标签「${tag}」`);
+        }
     }
 });
 
