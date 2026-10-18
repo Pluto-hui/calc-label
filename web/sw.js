@@ -2,7 +2,7 @@
    Service Worker — 离线缓存
    ============================================ */
 
-const CACHE_NAME = 'price-calc-v8';
+const CACHE_NAME = 'price-calc-v9';
 const ASSETS = [
     './',
     './index.html',

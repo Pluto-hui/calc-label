@@ -36,8 +36,6 @@ document.querySelectorAll('.tab-item').forEach(tab => {
         // 进入品牌库页时刷新内容
         if (page === 'brands') {
             document.getElementById('brandEditorText').value = brandsToText(Calc.brands);
-            renderTagManager();
-            renderTagSelect();
         }
     });
 });
@@ -68,13 +66,16 @@ function renderBrandList() {
         const ws = Calc.getBrandWholesale(b.idx);
         const mkt = Calc.getBrandMarket(b.idx);
         const qty = Calc.getBrandQty(b.idx);
+        const tagNames = Calc.getBrandTags(b.idx);
+        const tagDisplay = tagNames.length > 0 ? '🏷️' : '＋';
         return `
-        <div class="brand-row preset" data-index="${b.idx}">
+        <div class="brand-row preset ${tagNames.length > 0 ? 'tagged' : ''}" data-index="${b.idx}">
             <span class="brand-name">${b.name}</span>
             <input type="number" class="w-price" value="${ws}" step="0.1" min="0"
                    data-index="${b.idx}" data-field="wholesale" placeholder="批发价">
             <input type="number" class="m-price" value="${mkt}" step="0.1" min="0"
                    data-index="${b.idx}" data-field="market" placeholder="市场价">
+            <span class="tag-check ${tagNames.length > 0 ? 'on' : ''}" data-index="${b.idx}" title="选择标签">${tagDisplay}</span>
             <input type="number" class="qty" value="${qty}" min="1" max="9999" step="1"
                    data-index="${b.idx}" data-field="qty">
             <span class="diff-display zero" data-index="${b.idx}">—</span>
@@ -148,8 +149,17 @@ function updateSummary() {
     document.getElementById('sumProfit').textContent = `¥${totalProfit.toFixed(2)}`;
 }
 
-// ==================== 删除/恢复 ====================
+// ==================== 删除/恢复 & 标签选择 ====================
 document.getElementById('brandList').addEventListener('click', function(e) {
+    // 标签选择：打开弹窗
+    if (e.target.classList.contains('tag-check')) {
+        const idx = e.target.dataset.index;
+        if (idx !== undefined) {
+            openTagPicker(parseInt(idx));
+        }
+        return;
+    }
+
     // 删除
     if (e.target.classList.contains('del-btn')) {
         const row = e.target.closest('.brand-row');
@@ -241,111 +251,66 @@ document.getElementById('resetBrandsBtn').addEventListener('click', function() {
     }
 });
 
-// ==================== 标签管理（品牌库页） ====================
-function renderTagManager() {
-    const container = document.getElementById('tagList');
-    if (!container) return;
+// ==================== 标签选择弹窗 ====================
+const tagOverlay = document.getElementById('tagOverlay');
+let currentPickBrand = null;
+
+function openTagPicker(brandIdx) {
+    currentPickBrand = brandIdx;
+    const brand = Calc.brands[brandIdx];
+    document.getElementById('tagOverlayTitle').textContent = `🏷️ 给「${brand.name}」选择标签`;
+    renderTagPickerList();
+    document.getElementById('pickerNewTag').value = '';
+    tagOverlay.classList.remove('hidden');
+}
+
+function renderTagPickerList() {
+    const container = document.getElementById('tagPickerList');
     if (Calc.tags.length === 0) {
-        container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">暂无标签，输入名称新建</div>`;
+        container.innerHTML = `<div style="text-align:center;padding:16px;color:var(--text-muted);font-size:13px;">暂无标签，在下方新建</div>`;
         return;
     }
     container.innerHTML = Calc.tags.map(t => {
-        const count = Object.keys(Calc.brandTags).filter(k => Calc.brandTags[k].includes(t)).length;
+        const checked = Calc.hasBrandTag(currentPickBrand, t);
         return `
-        <div class="tm-item">
-            <span class="tm-name">🏷️ ${t}</span>
-            <span class="tm-count">${count} 个品牌</span>
-            <button class="tm-del" data-tag="${t}" title="删除标签">删除</button>
-        </div>`;
-    }).join('');
-}
-
-document.getElementById('addTagBtn').addEventListener('click', function() {
-    const input = document.getElementById('newTagName');
-    const name = input.value.trim();
-    if (!name) { showToast('请输入标签名'); return; }
-    if (Calc.addTag(name)) {
-        input.value = '';
-        renderTagManager();
-        renderTagFilter();
-        renderTagSelect();
-        showToast(`✅ 标签「${name}」已创建`);
-    } else {
-        showToast('⚠️ 标签已存在或无效');
-    }
-});
-
-document.getElementById('tagList').addEventListener('click', function(e) {
-    if (e.target.classList.contains('tm-del')) {
-        const tag = e.target.dataset.tag;
-        if (confirm(`确定删除标签「${tag}」吗？该标签将从所有品牌移除。`)) {
-            Calc.deleteTag(tag);
-            if (currentFilterTag === tag) currentFilterTag = '';
-            if (currentAssignTag === tag) currentAssignTag = '';
-            renderTagManager();
-            renderTagFilter();
-            renderTagSelect();
-            renderBrandList();
-            showToast(`✅ 已删除标签「${tag}」`);
-        }
-    }
-});
-
-// ==================== 标签分配（品牌库页） ====================
-let currentAssignTag = '';  // 当前正在编辑的标签
-
-function renderTagSelect() {
-    const container = document.getElementById('tagSelect');
-    if (!container) return;
-    if (Calc.tags.length === 0) {
-        container.innerHTML = `<div style="text-align:center;padding:12px;color:var(--text-muted);font-size:13px;">请先在上方新建标签</div>`;
-        document.getElementById('tagAssignList').innerHTML = '';
-        return;
-    }
-    // 默认选中第一个标签
-    if (!currentAssignTag || !Calc.tags.includes(currentAssignTag)) {
-        currentAssignTag = Calc.tags[0];
-    }
-    container.innerHTML = Calc.tags.map(t => `
-        <button class="tag-chip ${currentAssignTag === t ? 'active' : ''}" data-tag="${t}">${t}</button>
-    `).join('');
-    renderTagAssignList();
-}
-
-function renderTagAssignList() {
-    const container = document.getElementById('tagAssignList');
-    if (!container) return;
-    if (!currentAssignTag) {
-        container.innerHTML = '';
-        return;
-    }
-    // 列出所有品牌，勾选属于当前标签的
-    container.innerHTML = Calc.brands.map((b, i) => {
-        const checked = Calc.hasBrandTag(i, currentAssignTag);
-        return `
-        <button class="tag-assign-item ${checked ? 'checked' : ''}" data-index="${i}">
-            <span class="ta-check">${checked ? '☑' : '☐'}</span>
-            <span class="ta-name">${b.name}</span>
+        <button class="tag-pick-item ${checked ? 'checked' : ''}" data-tag="${t}">
+            <span class="tp-check">${checked ? '☑' : '☐'}</span>
+            <span class="tp-name">${t}</span>
         </button>`;
     }).join('');
 }
 
-document.getElementById('tagSelect').addEventListener('click', function(e) {
-    const chip = e.target.closest('.tag-chip');
-    if (!chip) return;
-    currentAssignTag = chip.dataset.tag;
-    renderTagSelect();
-});
-
-document.getElementById('tagAssignList').addEventListener('click', function(e) {
-    const item = e.target.closest('.tag-assign-item');
+document.getElementById('tagPickerList').addEventListener('click', function(e) {
+    const item = e.target.closest('.tag-pick-item');
     if (!item) return;
-    const idx = parseInt(item.dataset.index);
-    Calc.toggleBrandTag(idx, currentAssignTag);
-    renderTagAssignList();
-    renderTagManager();
+    const tag = item.dataset.tag;
+    Calc.toggleBrandTag(currentPickBrand, tag);
+    renderTagPickerList();
     renderBrandList();
     renderTagFilter();
+});
+
+document.getElementById('pickerAddTagBtn').addEventListener('click', function() {
+    const input = document.getElementById('pickerNewTag');
+    const name = input.value.trim();
+    if (!name) { showToast('请输入标签名'); return; }
+    if (Calc.addTag(name)) {
+        Calc.toggleBrandTag(currentPickBrand, name); // 创建后立即分配给当前品牌
+        input.value = '';
+        renderTagPickerList();
+        renderBrandList();
+        renderTagFilter();
+        showToast(`✅ 已创建并分配「${name}」`);
+    } else {
+        showToast('⚠️ 标签已存在');
+    }
+});
+
+document.getElementById('cancelTagPick').addEventListener('click', function() {
+    tagOverlay.classList.add('hidden');
+});
+tagOverlay.addEventListener('click', function(e) {
+    if (e.target === tagOverlay) tagOverlay.classList.add('hidden');
 });
 
 // ==================== 设置页 ====================
@@ -594,6 +559,9 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         if (!importOverlay.classList.contains('hidden')) {
             importOverlay.classList.add('hidden');
+        }
+        if (tagOverlay && !tagOverlay.classList.contains('hidden')) {
+            tagOverlay.classList.add('hidden');
         }
         if (saveOverlay && !saveOverlay.classList.contains('hidden')) {
             saveOverlay.classList.add('hidden');
